@@ -67,6 +67,10 @@ def getPhotos(albumName, albumId):
     AlbumLink = 'http://photo.renren.com/photo/'+ownerId+'/album-'+albumId+'/v7'
     AlbumPage=ungzip(urllib.request.urlopen(AlbumLink).read()).decode(encoding='UTF-8')
     PhotoIdRe = re.compile(r'"photoId":"(\d*?)",')
+    if re.search(PhotoIdRe, AlbumPage) == None:
+        print('Maybe album ' + albumName + ' is secret')
+        return
+
     photoId = re.search(PhotoIdRe, AlbumPage).group(1)
 
     #获取含有所有图片URL的网址
@@ -89,7 +93,7 @@ def getPhotos(albumName, albumId):
         except BaseException:
 
             #如果下载出现错误，则在log中记录发生错误的图片的URL
-            log = open("log.txt", "a")
+            log = open("log.txt", "a", encoding='utf-8')
             log.write(str(currentCount) + ' ' + albumName + ' ' + j + '\n')
             log.close()
             print(str(currentCount) + ' ' + albumName + ' ' + j + ' ' + 'error')
@@ -127,7 +131,7 @@ def getBlogs(BlogsList):
 
         #以HTML形式将日志写入文件
         try:
-            text = open(items[0] + '.html', 'w')
+            text = open(items[0] + '.html', 'w', encoding='utf-8')
             content = '<p>' + items[2] + '</p>\n'+ str(BlogContent[0][0]).replace('\\n', '')
             text.write(content)
             text.close()
@@ -149,7 +153,7 @@ def getStatusData(PageNumber):
 
 #保存状态到文件
 def saveStatus(StatuList):
-    page = open('Status.html', 'a')
+    page = open('Status.html', 'a', encoding='utf-8')
     for items in StatuList:
 
         #转发的状态
@@ -184,8 +188,8 @@ while True:
         break
 
 #获取用户ID
-ownerId=htmlObj.geturl()[22:]
-#ownerId='233955358'
+#ownerId=HtmlObj.geturl()[22:]
+ownerId='341029760'
 
 #新建并切换到目录RenRen
 os.mkdir("RenRen")
@@ -255,11 +259,11 @@ getBlogs(BlogIds)
 #获取全部照片
 
 albumsLink = 'http://photo.renren.com/photo/'+ownerId+'/albumlist/v7#'
-print('here')
+
 tag = True
 cnt = 0
 
-while tag and cnt < 10:
+while tag and cnt < 60:
     tag = False
 
     req = urllib.request.Request(albumsLink)
@@ -276,7 +280,7 @@ while tag and cnt < 10:
 
     #如果相册名字中包含 \\u (unicode未正常转码) 则跳出此循环，然后重新请求一次。
     for i in AlbumsList:
-        if i.count('\\u') > 7:
+        if i.count('\\u') > (cnt / 3):
             cnt += 1
             tag = True
             break
@@ -309,23 +313,16 @@ for i in PhotoCount:
         AlbumsId[index] = 'illegal'
         PhotoCount[index] = '-1'
 
-tmp_list = AlbumsList;
-AlbumsList = [];
-for album in tmp_list:
+ListId = []
+for album, ids in zip(AlbumsList, AlbumsId):
     if album != 'illegal':
 
         #避免相册名为类似'......'格式而导致文件夹无法被创建的情况
         if album.find('.', 0) != -1:
             album = '(' + album + ')'
-        AlbumsList.append(album)
+        ListId.append((album, ids))
 
-tmp_list = AlbumsId
-AlbumsId = []
-for id in tmp_list:
-    if(id != 'illegal'):
-        AlbumsId.append(id)
-
-print(AlbumsList);
+print(ListId);
 
 tmp_count = 2;
 tmp_list = []
@@ -335,18 +332,28 @@ os.mkdir('Photo')
 os.chdir('Photo')
 
 #避免重名相册
-for i in AlbumsList:
-    if i not in tmp_list:
-        tmp_list.append(i)
-        os.mkdir(i)
+for album, ids in ListId:
+    if album not in tmp_list:
+        tmp_list.append(album)
+        try:
+            os.mkdir(album)
+        except BaseException:
+            print('make direction ' + album + ' failed')
+            album = 'illegal'
+
     else:
         tmp_count += 1;
-        i += str(tmp_count)
-        os.mkdir(i)
-        tmp_list.append(i)
+        album += str(tmp_count)
+        tmp_list.append(album)
+        try:
+            os.mkdir(album)
+        except BaseException:
+            print('make direction ' + album + ' failed')
+            album = 'illegal'
 
 currentCount = 0;
 
 #下载每张照片
-for i,j in zip(AlbumsList, AlbumsId):
-    getPhotos(i, j)
+for i, j in ListId:
+    if i != 'illegal':
+        getPhotos(i, j)
