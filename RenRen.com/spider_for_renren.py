@@ -62,7 +62,11 @@ def ungzip(data):
 #获取图片
 def getPhotos(albumName, albumId):
     global ownerId, currentCount, NumberOfPhoto
-    downloadDir = albumName+os.sep
+    cnt = 0
+    if os.path.exists(albumName):
+        downloadDir = albumName + os.sep
+    else:
+        downloadDir = 'others' + os.sep
 
     AlbumLink = 'http://photo.renren.com/photo/'+ownerId+'/album-'+albumId+'/v7'
     AlbumPage=ungzip(urllib.request.urlopen(AlbumLink).read()).decode(encoding='UTF-8')
@@ -85,16 +89,20 @@ def getPhotos(albumName, albumId):
     for i,j in enumerate(photoLinkList):
         time.sleep(1)
         if j.count('\\')>0:
-            j=j.replace('\\','')
+            j = j.replace('\\','')
         currentCount += 1;
         print(str(currentCount) + '/' + str(NumberOfPhoto) + ' ' + albumName + ' ' + j + '\n')
         try:
-            urllib.request.urlretrieve(j, downloadDir+'%d.jpg' % i)
+            if downloadDir == 'others' + os.sep:
+                cnt += 1
+                urllib.request.urlretrieve(j, downloadDir+'%d.jpg' % cnt)
+            else:
+                urllib.request.urlretrieve(j, downloadDir+'%d.jpg' % i)
         except BaseException:
 
             #如果下载出现错误，则在log中记录发生错误的图片的URL
             log = open("log.txt", "a", encoding='utf-8')
-            log.write(str(currentCount) + ' ' + albumName + ' ' + j + '\n')
+            log.write(j + '\n')
             log.close()
             print(str(currentCount) + ' ' + albumName + ' ' + j + ' ' + 'error')
 
@@ -189,11 +197,11 @@ while True:
 
 #获取用户ID
 #ownerId=HtmlObj.geturl()[22:]
-ownerId='341029760'
+ownerId='302159649'
 
 #新建并切换到目录RenRen
-os.mkdir("RenRen")
-os.chdir("RenRen")
+os.mkdir('RenRen')
+os.chdir('RenRen')
 
 #获取当前路径
 RootPath = os.getcwd()
@@ -293,8 +301,6 @@ AlbumsId = re.findall(AlbumsIdRe,AlbumsPage)
 PhotoCountRe = re.compile(r'"photoCount":(\d*?),')
 PhotoCount = re.findall(PhotoCountRe, AlbumsPage)
 
-
-
 print(AlbumsList)
 print(PhotoCount)
 
@@ -330,6 +336,7 @@ tmp_list = []
 #创建相册文件夹
 os.mkdir('Photo')
 os.chdir('Photo')
+os.mkdir('others')
 
 #避免重名相册
 for album, ids in ListId:
@@ -357,3 +364,16 @@ currentCount = 0;
 for i, j in ListId:
     if i != 'illegal':
         getPhotos(i, j)
+
+#重新下载之前下载失败的图片到others文件夹中
+log = open("log.txt", "a", encoding='utf-8')
+LogContent = log.read()
+urls = LogContent.split('\n')
+
+i = 0
+for url in urls:
+    try:
+        i += 1
+        urllib.request.urlretrieve(url, 'others'+ os.sep + str(i) + '.jpg' )
+    except BaseException:
+        print(url + ' downloaded failed')
