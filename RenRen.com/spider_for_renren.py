@@ -61,8 +61,7 @@ def ungzip(data):
 
 #获取图片
 def getPhotos(albumName, albumId):
-    global ownerId, currentCount, NumberOfPhoto
-    cnt = 0
+    global ownerId, currentCount, NumberOfPhoto, OthersCount
     if os.path.exists(albumName):
         downloadDir = albumName + os.sep
     else:
@@ -94,8 +93,8 @@ def getPhotos(albumName, albumId):
         print(str(currentCount) + '/' + str(NumberOfPhoto) + ' ' + albumName + ' ' + j + '\n')
         try:
             if downloadDir == 'others' + os.sep:
-                cnt += 1
-                urllib.request.urlretrieve(j, downloadDir+'%d.jpg' % cnt)
+                OthersCount += 1
+                urllib.request.urlretrieve(j, downloadDir+'%d.jpg' % OthersCount)
             else:
                 urllib.request.urlretrieve(j, downloadDir+'%d.jpg' % i)
         except BaseException:
@@ -147,7 +146,7 @@ def getBlogs(BlogsList):
         except BaseException:
             print('some error occured in Blog ' + items[0])
 
-    #将目录切换回RenRen
+    #将目录切换回根目录
     os.chdir(RootPath)
 
 #获取状态列表
@@ -176,6 +175,22 @@ def saveStatus(StatuList):
     print('one page of status have been downloaded')
     page.close()
 
+#获取用户昵称
+def getInfo(Id):
+    global name
+
+    InfoLink = 'http://www.renren.com/' + Id + '/profile?v=info_timeline'
+    req=urllib.request.Request(InfoLink)
+    HtmlObj=urllib.request.urlopen(req)
+    PageData = HtmlObj.read()
+    InfoPage = ungzip(PageData).decode(encoding='UTF-8')
+
+    InfoRe = re.compile(r'<title>([\s\S]*?)</title>')
+    InfoContent = re.findall(InfoRe, InfoPage)
+
+    name = InfoContent[0]
+    print(InfoContent)
+
 #构造opener
 buildOpener(header)
 
@@ -197,11 +212,22 @@ while True:
 
 #获取用户ID
 #ownerId=HtmlObj.geturl()[22:]
-ownerId='302159649'
+ownerId='587377841'
 
-#新建并切换到目录RenRen
-os.mkdir('RenRen')
-os.chdir('RenRen')
+name = ''
+getInfo(ownerId)
+
+#新建并切换到目录
+if name != '':
+    try:
+        os.mkdir(name)
+        os.chdir(name)
+    except BaseException:
+        os.mkdir('RenRen')
+        os.chdir('RenRen')
+else:
+    os.mkdir('RenRen')
+    os.chdir('RenRen')
 
 #获取当前路径
 RootPath = os.getcwd()
@@ -359,6 +385,7 @@ for album, ids in ListId:
             album = 'illegal'
 
 currentCount = 0;
+OthersCount = 0
 
 #下载每张照片
 for i, j in ListId:
@@ -366,14 +393,14 @@ for i, j in ListId:
         getPhotos(i, j)
 
 #重新下载之前下载失败的图片到others文件夹中
-log = open("log.txt", "a", encoding='utf-8')
-LogContent = log.read()
-urls = LogContent.split('\n')
+if os.path.exists(log.txt):
+    log = open("log.txt", "r")
+    LogContent = log.read()
+    urls = LogContent.split('\n')
 
-i = 0
-for url in urls:
-    try:
-        i += 1
-        urllib.request.urlretrieve(url, 'others'+ os.sep + str(i) + '.jpg' )
-    except BaseException:
-        print(url + ' downloaded failed')
+    for url in urls:
+        try:
+            OthersCount += 1
+            urllib.request.urlretrieve(url, 'others'+ os.sep + str(OthersCount) + '.jpg' )
+        except BaseException:
+            print(url + ' downloaded failed')
