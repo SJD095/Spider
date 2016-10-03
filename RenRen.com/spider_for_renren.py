@@ -15,9 +15,6 @@ import urllib.request
 import urllib.parse
 import json
 
-#人人网登陆URL
-url = 'http://www.renren.com/PLogin.do'
-
 header = {
     'Connection': 'Keep-Alive',
     'Accept': 'text/html, application/xhtml+xml, */*',
@@ -191,6 +188,9 @@ def getInfo(Id):
     name = InfoContent[0]
     print(InfoContent)
 
+#人人网登陆URL
+url = 'http://www.renren.com/PLogin.do'
+
 #构造opener
 buildOpener(header)
 
@@ -201,18 +201,21 @@ while True:
         PostDict['password'] = input("请输入您的账号密码： ").strip()
         postData = urllib.parse.urlencode(PostDict).encode()
         req = urllib.request.Request(url, postData)
+        IdInformation = input("请输入人人网ID（default为自己）：  ").strip()
 
         #登陆首页
         HtmlObj=urllib.request.urlopen(req)
     except:
         print("登陆账号或密码不正确！请重新输入！")
     else:
-        print('正在登陆人人网服务器获取相册及相片信息，请稍等...\n')
+        print('正在登陆人人网服务器获取有关信息，请稍等\n')
         break
 
 #获取用户ID
-#ownerId=HtmlObj.geturl()[22:]
-ownerId='587377841'
+if IdInformation == 'default':
+    ownerId = HtmlObj.geturl()[22:]
+else:
+    ownerId = IdInformation
 
 name = ''
 getInfo(ownerId)
@@ -233,6 +236,7 @@ else:
 RootPath = os.getcwd()
 
 #获取全部状态
+
 StatusLink = 'http://status.renren.com/GetSomeomeDoingList.do'
 PageNumber = 0
 os.mkdir('Status')
@@ -393,10 +397,11 @@ for i, j in ListId:
         getPhotos(i, j)
 
 #重新下载之前下载失败的图片到others文件夹中
-if os.path.exists(log.txt):
+
+if os.path.exists('log.txt'):
     log = open("log.txt", "r")
     LogContent = log.read()
-    urls = LogContent.split('\n')
+    urls = LogContent.strip().split('\n')
 
     for url in urls:
         try:
@@ -404,3 +409,5 @@ if os.path.exists(log.txt):
             urllib.request.urlretrieve(url, 'others'+ os.sep + str(OthersCount) + '.jpg' )
         except BaseException:
             print(url + ' downloaded failed')
+
+    log.close()
